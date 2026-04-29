@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gewicht">
+<title>Gewicht Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #c8f135;
+    --accent2: #f1c135;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4444;
+    --target: 80;
+  }
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘DM Mono’, monospace;
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+/* Grain texture overlay */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image: url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 256 256’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘noise’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=‘0.9’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23noise)’ opacity=‘0.03’/%3E%3C/svg%3E”);
+pointer-events: none;
+z-index: 999;
+opacity: 0.4;
+}
+
+.header {
+padding: 48px 24px 24px;
+position: relative;
+}
+
+.header-label {
+font-size: 11px;
+letter-spacing: 0.2em;
+color: var(–muted);
+text-transform: uppercase;
+margin-bottom: 8px;
+}
+
+.header h1 {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: clamp(56px, 15vw, 88px);
+line-height: 0.9;
+letter-spacing: 0.02em;
+color: var(–text);
+}
+
+.header h1 span {
+color: var(–accent);
+}
+
+.current-weight-section {
+padding: 0 24px 32px;
+display: flex;
+align-items: flex-end;
+gap: 16px;
+}
+
+.big-weight {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: clamp(72px, 20vw, 120px);
+line-height: 1;
+color: var(–accent);
+text-shadow: 0 0 60px rgba(200,241,53,0.3);
+}
+
+.big-weight-unit {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 28px;
+color: var(–muted);
+padding-bottom: 12px;
+}
+
+.progress-section {
+margin: 0 24px 32px;
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 20px;
+}
+
+.progress-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 12px;
+}
+
+.progress-label {
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+}
+
+.progress-pct {
+font-size: 13px;
+color: var(–accent);
+font-weight: 500;
+}
+
+.progress-bar-bg {
+height: 6px;
+background: var(–border);
+border-radius: 3px;
+overflow: hidden;
+}
+
+.progress-bar-fill {
+height: 100%;
+background: linear-gradient(90deg, var(–accent2), var(–accent));
+border-radius: 3px;
+transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stats-row {
+display: grid;
+grid-template-columns: 1fr 1fr 1fr;
+gap: 12px;
+margin: 0 24px 32px;
+}
+
+.stat-card {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 16px 12px;
+text-align: center;
+}
+
+.stat-value {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 28px;
+line-height: 1;
+margin-bottom: 6px;
+}
+
+.stat-value.positive { color: var(–accent); }
+.stat-value.negative { color: var(–danger); }
+.stat-value.neutral { color: var(–text); }
+
+.stat-label {
+font-size: 9px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+}
+
+/* Input section */
+.input-section {
+margin: 0 24px 32px;
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 20px;
+}
+
+.input-section-label {
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+margin-bottom: 16px;
+}
+
+.input-row {
+display: flex;
+gap: 12px;
+align-items: center;
+}
+
+.weight-input-wrap {
+position: relative;
+flex: 1;
+}
+
+.weight-input {
+width: 100%;
+background: var(–bg);
+border: 1px solid var(–border);
+border-radius: 8px;
+padding: 14px 44px 14px 16px;
+color: var(–text);
+font-family: ‘DM Mono’, monospace;
+font-size: 18px;
+font-weight: 500;
+outline: none;
+transition: border-color 0.2s;
+-webkit-appearance: none;
+}
+
+.weight-input:focus {
+border-color: var(–accent);
+}
+
+.weight-input::placeholder { color: var(–muted); }
+
+.weight-input-unit {
+position: absolute;
+right: 14px;
+top: 50%;
+transform: translateY(-50%);
+color: var(–muted);
+font-size: 13px;
+}
+
+.add-btn {
+background: var(–accent);
+color: #0a0a0a;
+border: none;
+border-radius: 8px;
+padding: 14px 20px;
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 18px;
+letter-spacing: 0.05em;
+cursor: pointer;
+transition: transform 0.1s, opacity 0.2s;
+white-space: nowrap;
+}
+
+.add-btn:active { transform: scale(0.96); }
+
+.date-input {
+width: 100%;
+background: var(–bg);
+border: 1px solid var(–border);
+border-radius: 8px;
+padding: 10px 16px;
+color: var(–muted);
+font-family: ‘DM Mono’, monospace;
+font-size: 12px;
+outline: none;
+margin-top: 10px;
+-webkit-appearance: none;
+color-scheme: dark;
+}
+
+/* Chart */
+.chart-section {
+margin: 0 24px 32px;
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 20px;
+}
+
+.chart-section-label {
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+margin-bottom: 16px;
+}
+
+.chart-wrap {
+position: relative;
+height: 160px;
+}
+
+canvas#chart {
+width: 100%;
+height: 100%;
+}
+
+/* History */
+.history-section {
+margin: 0 24px 48px;
+}
+
+.history-label {
+font-size: 11px;
+letter-spacing: 0.15em;
+text-transform: uppercase;
+color: var(–muted);
+margin-bottom: 12px;
+}
+
+.history-list {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.history-item {
+background: var(–card);
+border: 1px solid var(–border);
+border-radius: 10px;
+padding: 14px 16px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+from { opacity: 0; transform: translateY(8px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+.history-date {
+font-size: 12px;
+color: var(–muted);
+}
+
+.history-weight {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 22px;
+}
+
+.history-diff {
+font-size: 12px;
+padding: 2px 8px;
+border-radius: 4px;
+}
+
+.history-diff.up { color: var(–accent); background: rgba(200,241,53,0.1); }
+.history-diff.down { color: var(–danger); background: rgba(255,68,68,0.1); }
+.history-diff.same { color: var(–muted); background: var(–border); }
+
+.delete-btn {
+background: none;
+border: none;
+color: var(–muted);
+cursor: pointer;
+font-size: 16px;
+padding: 4px;
+transition: color 0.2s;
+margin-left: 8px;
+}
+.delete-btn:hover { color: var(–danger); }
+
+.empty-state {
+text-align: center;
+padding: 40px 0;
+color: var(–muted);
+font-size: 13px;
+line-height: 1.8;
+}
+
+.toast {
+position: fixed;
+bottom: 32px;
+left: 50%;
+transform: translateX(-50%) translateY(80px);
+background: var(–accent);
+color: #0a0a0a;
+padding: 12px 24px;
+border-radius: 8px;
+font-size: 13px;
+font-weight: 500;
+transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+z-index: 1000;
+white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.motivational {
+margin: 0 24px 24px;
+padding: 14px 18px;
+background: rgba(200,241,53,0.07);
+border: 1px solid rgba(200,241,53,0.2);
+border-radius: 10px;
+font-size: 12px;
+color: var(–accent);
+letter-spacing: 0.02em;
+line-height: 1.6;
+}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="header-label">Dein Ziel</div>
+  <h1>GEWICHT<br><span>TRACKER</span></h1>
+</div>
+
+<div class="current-weight-section">
+  <div class="big-weight" id="currentWeightDisplay">--</div>
+  <div class="big-weight-unit">KG</div>
+</div>
+
+<div class="progress-section">
+  <div class="progress-header">
+    <span class="progress-label">Fortschritt zum Ziel (80 kg)</span>
+    <span class="progress-pct" id="progressPct">0%</span>
+  </div>
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+  </div>
+</div>
+
+<div class="motivational" id="motivational">Trag dein erstes Gewicht ein und starte deine Reise zu 80 kg! 💪</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value neutral" id="statStart">--</div>
+    <div class="stat-label">Start kg</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value positive" id="statGained">-- kg</div>
+    <div class="stat-label">Zugenommen</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value neutral" id="statLeft">-- kg</div>
+    <div class="stat-label">Noch fehlen</div>
+  </div>
+</div>
+
+<div class="input-section">
+  <div class="input-section-label">Gewicht eintragen</div>
+  <div class="input-row">
+    <div class="weight-input-wrap">
+      <input type="number" class="weight-input" id="weightInput" placeholder="z.B. 74.5" step="0.1" min="30" max="200">
+      <span class="weight-input-unit">kg</span>
+    </div>
+    <button class="add-btn" onclick="addEntry()">EINTRAGEN</button>
+  </div>
+  <input type="date" class="date-input" id="dateInput">
+</div>
+
+<div class="chart-section">
+  <div class="chart-section-label">Verlauf</div>
+  <div class="chart-wrap">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<div class="history-section">
+  <div class="history-label">Einträge</div>
+  <div class="history-list" id="historyList">
+    <div class="empty-state">Noch keine Einträge.<br>Trag dein Gewicht oben ein!</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TARGET = 80;
+const STORAGE_KEY = 'gewicht_tracker_v1';
+
+let entries = [];
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) entries = JSON.parse(raw);
+  } catch(e) { entries = []; }
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function formatDate(str) {
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function addEntry() {
+  const val = parseFloat(document.getElementById('weightInput').value);
+  const date = document.getElementById('dateInput').value || todayStr();
+
+  if (isNaN(val) || val < 30 || val > 200) {
+    showToast('Bitte ein gültiges Gewicht eingeben');
+    return;
+  }
+
+  // Remove duplicate for same date
+  entries = entries.filter(e => e.date !== date);
+  entries.push({ date, weight: val });
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  saveData();
+  document.getElementById('weightInput').value = '';
+  document.getElementById('dateInput').value = todayStr();
+  render();
+  showToast('✓ Eingetragen!');
+}
+
+function deleteEntry(date) {
+  entries = entries.filter(e => e.date !== date);
+  saveData();
+  render();
+}
+
+function getMotivational(current, gained, left) {
+  if (current >= TARGET) return '🎉 Du hast dein Ziel von 80 kg erreicht! Wahnsinn!';
+  if (gained >= 5) return `💪 Stark! Du hast bereits ${gained.toFixed(1)} kg zugelegt. Weiter so!`;
+  if (left <= 2) return `🔥 Noch ${left.toFixed(1)} kg bis zum Ziel – du bist fast da!`;
+  if (left <= 5) return `📈 Noch ${left.toFixed(1)} kg bis 80 kg. Du machst das!`;
+  return `🚀 Jeden Tag ein bisschen mehr. Noch ${left.toFixed(1)} kg bis zu deinem Ziel!`;
+}
+
+function render() {
+  if (entries.length === 0) {
+    document.getElementById('currentWeightDisplay').textContent = '--';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressPct').textContent = '0%';
+    document.getElementById('statStart').textContent = '--';
+    document.getElementById('statGained').textContent = '-- kg';
+    document.getElementById('statLeft').textContent = '-- kg';
+    document.getElementById('historyList').innerHTML = '<div class="empty-state">Noch keine Einträge.<br>Trag dein Gewicht oben ein!</div>';
+    drawChart([]);
+    return;
+  }
+
+  const latest = entries[entries.length - 1];
+  const first = entries[0];
+  const current = latest.weight;
+  const start = first.weight;
+  const gained = current - start;
+  const left = Math.max(0, TARGET - current);
+
+  // Progress: from start weight to target
+  // If start > target: already there
+  const totalNeeded = Math.max(0.1, TARGET - start);
+  const done = Math.max(0, current - start);
+  const pct = Math.min(100, Math.round((done / totalNeeded) * 100));
+
+  document.getElementById('currentWeightDisplay').textContent = current.toFixed(1);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('statStart').textContent = start.toFixed(1);
+
+  const gainedEl = document.getElementById('statGained');
+  gainedEl.textContent = (gained >= 0 ? '+' : '') + gained.toFixed(1) + ' kg';
+  gainedEl.className = 'stat-value ' + (gained >= 0 ? 'positive' : 'negative');
+
+  document.getElementById('statLeft').textContent = current >= TARGET ? '✓' : left.toFixed(1) + ' kg';
+  document.getElementById('motivational').textContent = getMotivational(current, gained, left);
+
+  // History list
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  const reversed = [...entries].reverse();
+  reversed.forEach((e, i) => {
+    const prev = entries[entries.length - 1 - i - 1];
+    const prevWeight = prev ? prev.weight : e.weight;
+    const diff = e.weight - prevWeight;
+
+    let diffHtml = '';
+    if (i < reversed.length - 1) {
+      const sign = diff > 0 ? '+' : '';
+      const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'same';
+      diffHtml = `<span class="history-diff ${cls}">${sign}${diff.toFixed(1)} kg</span>`;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <span class="history-date">${formatDate(e.date)}</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        ${diffHtml}
+        <span class="history-weight">${e.weight.toFixed(1)} kg</span>
+        <button class="delete-btn" onclick="deleteEntry('${e.date}')">✕</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  drawChart(entries);
+}
+
+function drawChart(entries) {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (entries.length < 1) {
+    ctx.fillStyle = '#333';
+    ctx.font = '12px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Noch keine Daten', W/2, H/2);
+    return;
+  }
+
+  const weights = entries.map(e => e.weight);
+  const minW = Math.min(...weights, TARGET) - 2;
+  const maxW = Math.max(...weights, TARGET) + 2;
+  const pad = { t: 16, r: 16, b: 28, l: 40 };
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
+  const xOf = (i) => pad.l + (entries.length === 1 ? cW/2 : (i / (entries.length - 1)) * cW);
+  const yOf = (w) => pad.t + cH - ((w - minW) / (maxW - minW)) * cH;
+
+  // Target line
+  const ty = yOf(TARGET);
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(200,241,53,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, ty);
+  ctx.lineTo(W - pad.r, ty);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(200,241,53,0.5)';
+  ctx.font = '9px DM Mono, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('80 kg', pad.l - 4, ty + 3);
+
+  // Y axis labels
+  ctx.fillStyle = '#444';
+  ctx.font = '9px DM Mono, monospace';
+  ctx.textAlign = 'right';
+  [minW, (minW+maxW)/2, maxW].forEach(v => {
+    const y = yOf(v);
+    ctx.fillText(Math.round(v), pad.l - 4, y + 3);
+  });
+
+  if (entries.length === 1) {
+    const x = xOf(0), y = yOf(entries[0].weight);
+    ctx.fillStyle = '#c8f135';
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(200,241,53,0.18)');
+  grad.addColorStop(1, 'rgba(200,241,53,0)');
+  ctx.beginPath();
+  ctx.moveTo(xOf(0), yOf(entries[0].weight));
+  entries.forEach((e, i) => { if (i > 0) ctx.lineTo(xOf(i), yOf(e.weight)); });
+  ctx.lineTo(xOf(entries.length-1), H - pad.b);
+  ctx.lineTo(xOf(0), H - pad.b);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(xOf(0), yOf(entries[0].weight));
+  entries.forEach((e, i) => { if (i > 0) ctx.lineTo(xOf(i), yOf(e.weight)); });
+  ctx.strokeStyle = '#c8f135';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Dots
+  entries.forEach((e, i) => {
+    const x = xOf(i), y = yOf(e.weight);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#c8f135';
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  document.getElementById('dateInput').value = todayStr();
+  render();
+
+  document.getElementById('weightInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addEntry();
+  });
+
+  window.addEventListener('resize', () => {
+    if (entries.length > 0) drawChart(entries);
+  });
+});
+</script>
+
+</body>
+</html>
